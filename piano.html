@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Grand Piano</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400&display=swap');
+
+        body {
+            background: linear-gradient(to right, #6d60a1, #8ca0e6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #piano-container {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2rem 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            margin-bottom: 1.5rem;
+            font-weight: 400;
+        }
+
+        .piano {
+            display: flex;
+            margin-top: 2rem;
+        }
+
+        .key {
+            width: 55px;
+            height: 220px;
+            border: 1px solid #000;
+            background: linear-gradient(to bottom, #f9f9f9, #e0e0e0);
+            cursor: pointer;
+            position: relative;
+            margin: 0 2px;
+            border-radius: 0 0 5px 5px;
+            box-shadow: inset 0 -5px 5px rgba(0,0,0,0.1), 0 5px 5px rgba(0,0,0,0.2);
+            transition: all 0.07s ease;
+        }
+
+        .key.black {
+            width: 38px;
+            height: 140px;
+            background: linear-gradient(to bottom, #444, #222);
+            margin: 0 -21px;
+            z-index: 2;
+            border-radius: 0 0 4px 4px;
+            box-shadow: inset 0 -4px 3px rgba(255,255,255,0.2), 0 5px 12px rgba(0,0,0,0.5);
+        }
+
+        .key.active {
+            transform: translateY(4px);
+            background: #ffc107; /* Highlight color */
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
+        }
+        
+        #ai-button {
+            padding: 12px 25px;
+            font-size: 1em;
+            color: #fff;
+            background: #ff5252;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 82, 82, 0.4);
+            font-weight: 300;
+        }
+
+        #ai-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 82, 82, 0.6);
+        }
+        
+        #ai-button:active {
+             transform: translateY(-1px);
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+</head>
+<body>
+
+<div id="piano-container">
+    <h1>AI Grand Piano</h1>
+    <button id="ai-button">Play AI Favorite Song</button>
+    <div class="piano">
+        <!-- Octave 4 -->
+        <div class="key" data-note="C4"></div><div class="key black" data-note="C#4"></div>
+        <div class="key" data-note="D4"></div><div class="key black" data-note="D#4"></div>
+        <div class="key" data-note="E4"></div><div class="key" data-note="F4"></div>
+        <div class="key black" data-note="F#4"></div><div class="key" data-note="G4"></div>
+        <div class="key black" data-note="G#4"></div><div class="key" data-note="A4"></div>
+        <div class="key black" data-note="A#4"></div><div class="key" data-note="B4"></div>
+        <!-- Octave 5 -->
+        <div class="key" data-note="C5"></div><div class="key black" data-note="C#5"></div>
+        <div class="key" data-note="D5"></div><div class="key black" data-note="D#5"></div>
+        <div class="key" data-note="E5"></div>
+    </div>
+</div>
+
+<script>
+    // --- AUDIO ENGINE SETUP ---
+    // Use PolySynth for multiple simultaneous notes
+    const synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: {
+            type: "fmtriangle",
+            harmonicity: 0.8,
+            modulationType: "sine"
+        },
+        envelope: {
+            attack: 0.02,
+            decay: 0.1,
+            sustain: 0.3,
+            release: 1
+        },
+        volume: -10 // Lower the volume slightly
+    }).toDestination();
+
+    const keys = document.querySelectorAll('.key');
+
+    // --- AI PIANIST ---
+    const aiButton = document.getElementById('ai-button');
+
+    // "Twinkle Twinkle Little Star" notes and timing
+    const favoriteSong = [
+      { note: "C4", duration: "8n", timing: 0 }, { note: "C4", duration: "8n", timing: 0.5 },
+      { note: "G4", duration: "8n", timing: 1 }, { note: "G4", duration: "8n", timing: 1.5 },
+      { note: "A4", duration: "8n", timing: 2 }, { note: "A4", duration: "8n", timing: 2.5 },
+      { note: "G4", duration: "4n", timing: 3 },
+      { note: "F4", duration: "8n", timing: 4 }, { note: "F4", duration: "8n", timing: 4.5 },
+      { note: "E4", duration: "8n", timing: 5 }, { note: "E4", duration: "8n", timing: 5.5 },
+      { note: "D4", duration: "8n", timing: 6 }, { note: "D4", duration: "8n", timing: 6.5 },
+      { note: "C4", duration: "4n", timing: 7 },
+    ];
+
+    aiButton.addEventListener('click', async () => {
+        await Tone.start();
+        playSong(favoriteSong);
+    });
+    
+    function playSong(song) {
+        let cumulativeTime = Tone.now(); // Get the current time from the audio context
+        song.forEach(noteData => {
+            // Schedule the note to be played at the correct time
+            synth.triggerAttackRelease(noteData.note, noteData.duration, cumulativeTime + noteData.timing);
+            
+            // Schedule the visual feedback
+            Tone.Draw.schedule(() => {
+                lightUpKey(noteData.note);
+            }, cumulativeTime + noteData.timing);
+        });
+    }
+
+    // --- VISUAL FEEDBACK ---
+    function lightUpKey(note) {
+        const keyElement = document.querySelector(`[data-note="${note}"]`);
+        if (keyElement) {
+            keyElement.classList.add('active');
+            setTimeout(() => {
+                keyElement.classList.remove('active');
+            }, 300); // Highlight duration
+        }
+    }
+
+    // --- MANUAL PLAYING ---
+    keys.forEach(key => {
+        key.addEventListener('mousedown', () => {
+            const note = key.dataset.note;
+            synth.triggerAttack(note); // Use triggerAttack for holding notes
+            key.classList.add('active');
+        });
+        key.addEventListener('mouseup', () => {
+            const note = key.dataset.note;
+            synth.triggerRelease(note); // Use triggerRelease when mouse is up
+            key.classList.remove('active');
+        });
+        key.addEventListener('mouseleave', () => {
+             const note = key.dataset.note;
+            synth.triggerRelease(note);
+            key.classList.remove('active');
+        });
+    });
+    
+    // Ensure AudioContext starts on first user interaction
+    document.body.addEventListener('mousedown', () => Tone.start(), { once: true });
+
+</script>
+
+</body>
+</html>
